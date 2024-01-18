@@ -60,7 +60,9 @@ ui <- dashboardPage(
       tabItem(tabName = "analysis",
               fluidRow(
                 box(title = "Aperçu des données", status = "primary", solidHeader = TRUE,
-                    DTOutput("table")
+                    style = "overflow-x: auto;", # Apply style here
+                    DTOutput("table"),
+                    width = 12
                 ),
                 box(title = "Statistiques descriptives unidimensionnelle", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
@@ -73,19 +75,22 @@ ui <- dashboardPage(
                                  tabPanel("Résume", verbatimTextOutput("summary"))
                                )
                       )
-                    )
+                    ),
+                    width = 6 # Half width
                 ),
                 box(title = "Analyse bidimensionnelle", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
                       tabPanel("correlation plot",plotlyOutput("bivariate_analysis")),
                       tabPanel("Correlation Matrix", plotOutput("correlation_matrix_plot"))
-                    )
+                    ),
+                    width = 6 # Half width
                 ),
                 box(title = "Label Analysis", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
                       tabPanel("Bar Plot", plotOutput(outputId = "label_analysis", height = 500, width = 600)),
                       tabPanel("Pie Chart", plotOutput("pie_chart",height = 500, width = 600))
-                    )
+                    ),
+                    width = 6 # Half width
                 )
               )
       ),
@@ -125,6 +130,7 @@ ui <- dashboardPage(
       )
     )
   ))
+
 
 
 
