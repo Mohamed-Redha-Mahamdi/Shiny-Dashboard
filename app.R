@@ -66,15 +66,13 @@ ui <- dashboardPage(
                 ),
                 box(title = "Statistiques descriptives unidimensionnelle", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
-                      tabPanel("Graphiques", 
-                               tabsetPanel(
+
                                  tabPanel("Histogramme", numericInput("binwidth_input", "Binwidth:", value = 0.2, min = 0.01, step = 0.01), plotlyOutput("histogram")),
                                  tabPanel("Box Plot", plotlyOutput("boxplot")),
                                  tabPanel("Density Plot", plotlyOutput("densityplot")),
                                  tabPanel("Extra", verbatimTextOutput("univariate_analysis")),
                                  tabPanel("Résume", verbatimTextOutput("summary"))
-                               )
-                      )
+
                     ),
                     width = 6 # Half width
                 ),
@@ -99,20 +97,17 @@ ui <- dashboardPage(
       # Modelling Tab
       tabItem(tabName = "modelling",
               fluidRow(
-                box(title = "Modèl", status = "primary", solidHeader = TRUE,
+                box(title = "SVM", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
-                      tabPanel("SVM",
-                               tabsetPanel(
-                                 tabPanel("résume",verbatimTextOutput("model_results"), plotOutput("pdp_plots")),
+                                 tabPanel("résume",verbatimTextOutput("model_results")),
                                  tabPanel("Evaluation", 
                                           plotOutput("confusion_matrix_plot"),
                                           plotOutput("roc_auc_curve_plot")
                                  ),
                                  tabPanel("PDPs", uiOutput("pdp_output"))
-                               )
-                      ),
-                      tabPanel("Random Forest",
-                               tabsetPanel(
+                               ),width = 6),
+                box(title = "Random Forest", status = "primary", solidHeader = TRUE,
+                      tabsetPanel(
                                  tabPanel("résume",verbatimTextOutput("model_results_RF")),
                                  tabPanel("Evaluation", 
                                           plotOutput("confusion_matrix_plot_RF"),
@@ -121,7 +116,7 @@ ui <- dashboardPage(
                                  tabPanel("Feature Importances",
                                           plotOutput("feature_importance_plot")
                                  )
-                               )
+                               ), width = 6
                       )
                     ),
                     actionButton("train_model", "Entraîner le modèle")
@@ -129,7 +124,7 @@ ui <- dashboardPage(
               )
       )
     )
-  ))
+
 
 
 
