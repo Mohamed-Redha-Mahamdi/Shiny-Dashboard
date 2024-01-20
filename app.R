@@ -17,7 +17,6 @@ library(shinyjs)
 library(shinyWidgets)
 library(shinydashboard)
 
-
 ui <- dashboardPage(
   dashboardHeader(title = "Exploration de données"),
   dashboardSidebar(
@@ -36,9 +35,6 @@ ui <- dashboardPage(
                     checkboxInput("header", "Does the file have a header row?", TRUE),
                     actionButton("loadData", "Load Data"),
                     br(), br(),
-                    h3("Variable Selection"),
-                    selectInput("x_variable", "X Variable:", choices = ""),
-                    selectInput("y_variable", "Y Variable:", choices = "")
                 ),
                 box(title = "Preproccesing", status = "primary", solidHeader = TRUE, width = 6,
                     selectInput("categorical_variables", "Select Categorical and Nominal Variables:", multiple = TRUE, choices = NULL),
@@ -71,24 +67,29 @@ ui <- dashboardPage(
                     DTOutput("table"),
                     width = 12
                 ),
+                box(title = "Variable Selection", status = "primary", solidHeader = TRUE, width = 2 ,
+                    h3("Variable Selection"),
+                    selectInput("x_variable", "X Variable:", choices = ""),
+                    selectInput("y_variable", "Y Variable:", choices = "")
+                ),
                 box(title = "Statistiques descriptives unidimensionnelle", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
-
-                                 tabPanel("Histogramme", numericInput("binwidth_input", "Binwidth:", value = 0.2, min = 0.01, step = 0.01), plotlyOutput("histogram")),
-                                 tabPanel("Box Plot", plotlyOutput("boxplot")),
-                                 tabPanel("Density Plot", plotlyOutput("densityplot")),
-                                 tabPanel("Extra", verbatimTextOutput("univariate_analysis")),
-                                 tabPanel("Résume", verbatimTextOutput("summary"))
-
+                      
+                      tabPanel("Histogramme", numericInput("binwidth_input", "Binwidth:", value = 0.2, min = 0.01, step = 0.01), plotlyOutput("histogram")),
+                      tabPanel("Box Plot", plotlyOutput("boxplot")),
+                      tabPanel("Density Plot", plotlyOutput("densityplot")),
+                      tabPanel("Extra", verbatimTextOutput("univariate_analysis")),
+                      tabPanel("Résume", verbatimTextOutput("summary"))
+                      
                     ),
-                    width = 6 # Half width
+                    width = 5 # Half width
                 ),
                 box(title = "Analyse bidimensionnelle", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
                       tabPanel("correlation plot",plotlyOutput("bivariate_analysis")),
                       tabPanel("Correlation Matrix", plotOutput("correlation_matrix_plot"))
                     ),
-                    width = 6 # Half width
+                    width = 5 # Half width
                 ),
                 box(title = "Label Analysis", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
@@ -106,46 +107,64 @@ ui <- dashboardPage(
               fluidRow(
                 box(title = "SVM", status = "primary", solidHeader = TRUE,
                     tabsetPanel(
-                                 tabPanel("résume",verbatimTextOutput("model_results")),
-                                 tabPanel("Evaluation", 
-                                          plotOutput("confusion_matrix_plot"),
-                                          plotOutput("roc_auc_curve_plot")
-                                 ),
-                                 tabPanel("PDPs", uiOutput("pdp_output")),
-                                 
-                                 conditionalPanel(
-                                   condition = "input.train_model > 0",
-                                   downloadButton("downloadSVM", "Download SVM Model") # Add this line
-                                 )                               ),width = 6),
-                box(title = "Random Forest", status = "primary", solidHeader = TRUE,
-                      tabsetPanel(
-                                 tabPanel("résume",verbatimTextOutput("model_results_RF")),
-                                 tabPanel("Evaluation", 
-                                          plotOutput("confusion_matrix_plot_RF"),
-                                          plotOutput("roc_auc_curve_plot_RF")
-                                 ),
-                                 tabPanel("Feature Importances",
-                                          plotOutput("feature_importance_plot")
-                                 ),
-                                 conditionalPanel(
-                                   condition = "input.train_model > 0",
-                                   downloadButton("downloadRF", "Download Random Forest Model") # Add this line
-                                 )
-                                 
-                               ), width = 6
+                      tabPanel("résume",verbatimTextOutput("model_results")),
+                      tabPanel("Evaluation", 
+                               plotOutput("confusion_matrix_plot"),
+                               plotOutput("roc_auc_curve_plot")
                       ),
+                      tabPanel("PDPs", uiOutput("pdp_output")),
+                      
+                      conditionalPanel(
+                        condition = "input.train_model > 0",
+                        downloadButton("downloadSVM", "Download SVM Model") # Add this line
+                      )                               ),width = 6),
+                box(title = "Random Forest", status = "primary", solidHeader = TRUE,
+                    tabsetPanel(
+                      tabPanel("résume",verbatimTextOutput("model_results_RF")),
+                      tabPanel("Evaluation", 
+                               plotOutput("confusion_matrix_plot_RF"),
+                               plotOutput("roc_auc_curve_plot_RF")
+                      ),
+                      tabPanel("Feature Importances",
+                               plotOutput("feature_importance_plot")
+                      ),
+                      conditionalPanel(
+                        condition = "input.train_model > 0",
+                        downloadButton("downloadRF", "Download Random Forest Model") # Add this line
+                      )
+                      
+                    ), width = 6
+                ),
+                box(title = "Logistic Regression", status = "primary", solidHeader = TRUE,
+                    tabsetPanel(
+                      tabPanel("résume",verbatimTextOutput("model_results_LR")),
+                      tabPanel("Evaluation", 
+                               plotOutput("confusion_matrix_plot_LR"),
+                               plotOutput("roc_auc_curve_plot_LR")
+                      ),
+                      tabPanel("Feature Importances",
+                               plotOutput("feature_importance_plot_LR")
+                      ),
+                      conditionalPanel(
+                        condition = "input.train_model > 0",
+                        downloadButton("downloadLR", "Download Logistic Regression Model") # Add this line
+                      )
+                      
+                    ), width = 6
+                ),
                 box(title = "Spliting Data", status = "primary", solidHeader = TRUE,
                     column(6, 
-                         sliderInput("training_percentage", "Training Set Percentage:", value = 70, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%"),
-                         sliderInput("test_percentage", "Test Set Percentage:", value = 30, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%")
-                  ),
-                  column(6, 
-                         actionButton("train_model", "Entraîner le modèle")
-                  )
+                           sliderInput("training_percentage", "Training Set Percentage:", value = 70, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%"),
+                           sliderInput("test_percentage", "Test Set Percentage:", value = 30, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%")
+                    ),
+                    column(6, 
+                           actionButton("train_model", "Entraîner le modèle")
+                    )
                 )
               )
       )
     )))
+
 
 
 
@@ -160,6 +179,7 @@ server <- function(input, output, session) {
   training_set <- reactiveVal()
   feature_names <- reactive(NULL)
   trained_model_RF <- reactiveVal(NULL)
+  logistic_model <- reactiveVal(NULL)
   
   observe({
     if (!target_variable() %in% names(data())) {
@@ -278,6 +298,8 @@ server <- function(input, output, session) {
         stop("importance() did not return a matrix with row names.")
       }
     })
+        
+      
     
     trained_model_RF(list(
       model = rf_model,
@@ -288,6 +310,51 @@ server <- function(input, output, session) {
       F1_RF = F1_RF
     ))
     
+    # Train the logistic regression model
+    logistic_model <- glm(as.formula(paste(target_variable(), "~ .")), data = training_set(), family = binomial())
+    
+    # Make predictions on the test set
+    test_probabilities_logistic <- predict(logistic_model, newdata = test_set(), type = "response")
+    
+    # Convert probabilities to predicted class based on the threshold
+    predicted_values_logistic <- ifelse(test_probabilities_logistic > 0.5, 4, 2)  # Assuming binary classification with values 2 and 4
+    
+    # Generate confusion matrix
+    confusion_matrix_logistic <- confusionMatrix(factor(predicted_values_logistic, levels = c(2, 4)), test_set()[[target_variable()]])
+    
+    # Calculate performance metrics
+    accuracy_logistic <- confusion_matrix_logistic$overall['Accuracy']
+    precision_logistic <- confusion_matrix_logistic$byClass['Precision']
+    recall_logistic <- confusion_matrix_logistic$byClass['Recall']
+    F1_logistic <- 2 * (precision_logistic * recall_logistic) / (precision_logistic + recall_logistic)
+    
+    # Store the trained model and performance metrics in the logistic_model reactive value
+    logistic_model_data <- list(
+      model = logistic_model,
+      metrics = confusion_matrix_logistic,
+      accuracy = accuracy_logistic,
+      precision = precision_logistic,
+      recall = recall_logistic,
+      F1 = F1_logistic
+    )
+    
+    logistic_model(logistic_model_data)
+    
+    # Train the logistic regression model
+    logistic_model <- glm(as.formula(paste(target_variable(), "~ .")), data = training_set(), family = binomial())
+    
+    # Extract coefficients and convert to odds ratios
+    coefficients <- exp(coef(logistic_model))
+    
+    # Create plot
+    output$feature_importance_plot_LR <- renderPlot({
+      coef_df <- data.frame(Feature = names(coefficients), OddsRatio = coefficients)
+      ggplot(coef_df, aes(x = reorder(Feature, OddsRatio), y = OddsRatio)) +
+        geom_bar(stat = "identity", fill = "steelblue") +
+        labs(title = "Feature Odds Ratios", x = "Features", y = "Odds Ratio") +
+        theme_minimal() +
+        theme(axis.text.x = element_text(angle = 90, hjust = 1))
+    })
     
     
     output$downloadSVM <- downloadHandler(
@@ -305,6 +372,15 @@ server <- function(input, output, session) {
       },
       content = function(file) {
         saveRDS(rf_model, file)
+      }
+    )
+    
+    output$downloadLR <- downloadHandler(
+      filename = function() {
+        "LR_model.rds"
+      },
+      content = function(file) {
+        saveRDS(logistic_model, file)
       }
     )
     
@@ -427,7 +503,56 @@ server <- function(input, output, session) {
       theme_minimal()
     print(roc_plot)
   })
-  0
+  
+  
+  output$roc_auc_curve_plot_LR<- renderPlot({
+    req(logistic_model(), test_set())
+    test_probabilities_logistic <- predict(logistic_model()$model, newdata = test_set(), type = "response")
+    true_outcomes_logistic <- as.numeric(test_set()[[target_variable()]]) - 1
+    roc_obj_logistic <- roc(response = true_outcomes_logistic, predictor = test_probabilities_logistic)
+    roc_data_logistic <- data.frame(
+      specificity = 1 - roc_obj_logistic$specificities,
+      sensitivity = roc_obj_logistic$sensitivities
+    )
+    roc_plot_logistic <- ggroc(roc_obj_logistic, colour = 'steelblue', size = 2) +
+      geom_ribbon(aes(x = 1 - specificity, ymin = 0, ymax = sensitivity), 
+                  fill = 'steelblue', alpha = 0.2) +
+      annotate("text", x = 0.6, y = 0.2, label = paste0("AUC = ", round(auc(roc_obj_logistic), 2)), 
+               color = "red", size = 5) +
+      ggtitle(paste0('ROC Curve for Logistic Regression Model (AUC = ', round(auc(roc_obj_logistic), 2), ')')) +
+      theme_minimal()
+    print(roc_plot_logistic)
+  })
+  
+  output$confusion_matrix_plot_LR <- renderPlot({
+    req(logistic_model())
+    confusionMatrix_logistic <- logistic_model()$metrics$table
+    confusion_df_logistic <- as.data.frame(confusionMatrix_logistic)
+    colnames(confusion_df_logistic) <- c("Prediction", "Reference", "Freq")
+    ggplot(confusion_df_logistic, aes(x = Reference, y = Prediction, fill = Freq)) +
+      geom_tile(color = "white") +
+      geom_text(aes(label = sprintf("%d\n(%.1f%%)", Freq, Freq/sum(Freq)*100)), vjust = 1) +
+      scale_fill_gradient(low = "white", high = "steelblue") +
+      labs(title = "Confusion Matrix for Logistic Regression Model", x = "Actual", y = "Predicted") +
+      theme_minimal() +
+      theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  })
+  
+  output$model_results_LR <- renderPrint({
+    req(logistic_model())
+    metrics_logistic <- logistic_model()$metrics
+    precision_logistic <- logistic_model()$precision
+    recall_logistic <- logistic_model()$recall
+    f1_score_logistic <- logistic_model()$F1
+    cat("Confusion Matrix:\n")
+    print(metrics_logistic$table)
+    cat("\nAccuracy:", metrics_logistic$overall['Accuracy'], "\n")
+    cat("Precision:", precision_logistic, "\n")
+    cat("Recall:", recall_logistic, "\n")
+    cat("F1 Score:", f1_score_logistic, "\n")
+  })
+  
+
   observeEvent(input$loadData, {
     if (!is.null(data())) {
       output$table <- renderDT({ datatable(data()) })
