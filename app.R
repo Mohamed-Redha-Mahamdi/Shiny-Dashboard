@@ -31,27 +31,34 @@ ui <- dashboardPage(
     tabItems(
       tabItem(tabName = "data_upload",
               fluidRow(
-                box(title = "Upload", status = "primary", solidHeader = TRUE,
-                    fileInput("file", "Choisir un fichier CSV :"),
-                    checkboxInput("header", "Le fichier a-t-il une ligne d'en-tête ?", TRUE),
-                    actionButton("loadData", "Charger les données")
+                box(title = "Upload", status = "primary", solidHeader = TRUE, width = 6,
+                    fileInput("file", "Choose a CSV file:"),
+                    checkboxInput("header", "Does the file have a header row?", TRUE),
+                    actionButton("loadData", "Load Data"),
+                    br(), br(),
+                    h3("Variable Selection"),
+                    selectInput("x_variable", "X Variable:", choices = ""),
+                    selectInput("y_variable", "Y Variable:", choices = "")
                 ),
-                box(title = "Variables", status = "primary", solidHeader = TRUE,
-                    selectInput("x_variable", "Variable X :", choices = ""),
-                    selectInput("y_variable", "Variable Y :", choices = "")
-                ),
-                box(title = "Prétraitement", status = "primary", solidHeader = TRUE,
-                    selectInput("categorical_variables", "Sélectionnez les variables categorial et nominale :", multiple = TRUE, choices = NULL),
+                box(title = "Preproccesing", status = "primary", solidHeader = TRUE, width = 6,
+                    selectInput("categorical_variables", "Select Categorical and Nominal Variables:", multiple = TRUE, choices = NULL),
                     selectInput("column_to_convert", "Select Column to Convert", choices = NULL),
                     actionButton("convert_to_numeric", "Convert to Numeric"),
-                    selectInput("training_variable", "Variable pour l'entraînement :", choices = ""),
-                    selectInput("missing_columns", "Sélectionnez les variables avec valeurs manquantes :", multiple = TRUE, choices = NULL),
-                    actionButton("removeMissingCols", "Supprimer"),
-                    actionButton("removeMissingRows", "Supprimer NA"),
-                    actionButton("refreshData", "Actualiser"),
+                    br(), br(),
+                    selectInput("training_variable", "Variable for Training:", choices = ""),
+                    selectInput("missing_columns", "Select Variables with Missing Values:", multiple = TRUE, choices = NULL),
+                    actionButton("removeMissingCols", "Remove Selected Columns"),
+                    actionButton("removeMissingRows", "Remove Rows with NA"),
+                    actionButton("remove_duplicates", "Remove Duplicates"),
+                    br(), br(),
                     numericInput("rows_to_delete", "Number of Rows to Delete", value = 0, min = 0),
                     numericInput("target_value", "Target Value to Delete", value = 4),
-                    actionButton("delete_rows", "Supprimer les lignes")
+                    actionButton("delete_rows", "Delete Rows"),
+                    br(), br(),
+                    actionButton("normalize", "Normalize Data"),
+                    actionButton("zscore_normalize", "Normalize Data (Z-score)"),
+                    br(), br(),
+                    actionButton("refreshData", "Refresh Data")
                 )
               )
       ),
@@ -104,8 +111,12 @@ ui <- dashboardPage(
                                           plotOutput("confusion_matrix_plot"),
                                           plotOutput("roc_auc_curve_plot")
                                  ),
-                                 tabPanel("PDPs", uiOutput("pdp_output"))
-                               ),width = 6),
+                                 tabPanel("PDPs", uiOutput("pdp_output")),
+                                 
+                                 conditionalPanel(
+                                   condition = "input.train_model > 0",
+                                   downloadButton("downloadSVM", "Download SVM Model") # Add this line
+                                 )                               ),width = 6),
                 box(title = "Random Forest", status = "primary", solidHeader = TRUE,
                       tabsetPanel(
                                  tabPanel("résume",verbatimTextOutput("model_results_RF")),
@@ -115,15 +126,26 @@ ui <- dashboardPage(
                                  ),
                                  tabPanel("Feature Importances",
                                           plotOutput("feature_importance_plot")
+                                 ),
+                                 conditionalPanel(
+                                   condition = "input.train_model > 0",
+                                   downloadButton("downloadRF", "Download Random Forest Model") # Add this line
                                  )
+                                 
                                ), width = 6
-                      )
-                    ),
-                    actionButton("train_model", "Entraîner le modèle")
+                      ),
+                box(title = "Spliting Data", status = "primary", solidHeader = TRUE,
+                    column(6, 
+                         sliderInput("training_percentage", "Training Set Percentage:", value = 70, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%"),
+                         sliderInput("test_percentage", "Test Set Percentage:", value = 30, min = 1, max = 99, step = 1, ticks = FALSE, width = "100%")
+                  ),
+                  column(6, 
+                         actionButton("train_model", "Entraîner le modèle")
+                  )
                 )
               )
       )
-    )
+    )))
 
 
 
@@ -168,21 +190,46 @@ server <- function(input, output, session) {
     }
   })
   
+  observeEvent(input$normalize, {
+    data_normalized <- as.data.frame(scale(data()))
+    data(data_normalized)
+  })
+  
+  observeEvent(input$zscore_normalize, {
+    req(data())  # Ensure that 'data' is available before proceeding
+    
+    # Perform Z-score normalization
+    data_normalized <- as.data.frame(scale(data()))
+    
+    # Update the 'data' reactive value with the normalized data
+    data(data_normalized)
+    
+    # You can also provide some feedback to the user, e.g., via a notification
+    showNotification("Les données ont été normalisées avec Z-score.", type = "message")
+  })
+  
   observeEvent(input$train_model, {
     req(data())
-    # Define the target variable
-    #target_variable <- input$training_variable
-    # Ensure the target variable is in the dataset
+    
     if (!target_variable() %in% colnames(data())) {
       showModal(modalDialog("La variable cible sélectionnée n'est pas valide.", title = "Erreur", easyClose = TRUE))
       return()
     }
     
-    set.seed(123) # for reproducibility
-    partition <- createDataPartition(data()[[target_variable()]], p = 0.7, list = FALSE)
-    training_set(data()[partition, ])
-    test_set_temp <- data()[-partition, ]
-    test_set(test_set_temp)
+    training_percentage <- input$training_percentage
+    test_percentage <- input$test_percentage
+    
+    if (is.null(training_percentage) || is.null(test_percentage) || training_percentage + test_percentage != 100) {
+      showModal(modalDialog("Veuillez spécifier des pourcentages valides pour l'ensemble d'entraînement et l'ensemble de test.", title = "Erreur", easyClose = TRUE))
+      return()
+    }
+    
+    training_rows <- round(training_percentage * nrow(data()) / 100)
+    test_rows <- nrow(data()) - training_rows
+    
+    training_set(data()[1:training_rows, ])
+    test_set(data()[(training_rows + 1):nrow(data()), ])
+    
     updated_data <- test_set()
     updated_data[[target_variable()]] <- as.factor(updated_data[[target_variable()]])
     test_set(updated_data)
@@ -209,17 +256,16 @@ server <- function(input, output, session) {
     precision_RF <- confusion_matrix_RF$byClass['Precision']
     recall_RF <- confusion_matrix_RF$byClass['Recall']
     F1_RF <- 2 * (precision_RF * recall_RF) / (precision_RF + recall_RF)
-    
-    # Calculate feature importances and plot them
-    output$feature_importance_plot <- renderPlot({
+
+        output$feature_importance_plot <- renderPlot({
       req(trained_model_RF())
       rf_model <- trained_model_RF()$model
-      req(rf_model) # Ensure that rf_model is available
+      req(rf_model) 
       importances <- importance(rf_model)
       if (is.matrix(importances) && !is.null(rownames(importances))) {
         importance_df <- data.frame(
           feature = rownames(importances),
-          importance = importances[, 1], # Assuming we want the first importance metric
+          importance = importances[, 1], 
           stringsAsFactors = FALSE
         )
         importance_df <- importance_df[order(importance_df$importance, decreasing = TRUE), ]
@@ -241,6 +287,26 @@ server <- function(input, output, session) {
       recall_RF = recall_RF,
       F1_RF = F1_RF
     ))
+    
+    
+    
+    output$downloadSVM <- downloadHandler(
+      filename = function() {
+        "svm_model.rds"
+      },
+      content = function(file) {
+        saveRDS(svm_model, file)
+      }
+    )
+    
+    output$downloadRF <- downloadHandler(
+      filename = function() {
+        "rf_model.rds"
+      },
+      content = function(file) {
+        saveRDS(rf_model, file)
+      }
+    )
     
   })
   
@@ -275,17 +341,13 @@ server <- function(input, output, session) {
   
   output$pdp_output <- renderUI({
     req(trained_model(), training_set())
-    # Get the names of features for which to generate PDPs
     feature_names <- setdiff(names(training_set()), target_variable())
-    # Create a list of plot outputs
     plot_output_list <- lapply(seq_along(feature_names), function(i) {
       plotlyOutput(outputId = paste0("pdp_plot_", i))
     })
-    # Return a tagList of all plot outputs
     do.call(tagList, plot_output_list)
   })
   
-  # Inside server function
   observe({
     req(trained_model(), training_set())
     feature_names <- setdiff(names(training_set()), target_variable())
@@ -304,7 +366,6 @@ server <- function(input, output, session) {
   output$confusion_matrix_plot <- renderPlot({
     req(trained_model())
     confusionMatrix <- trained_model()$metrics$table
-    # Convert the confusion matrix to a tidy data frame
     confusion_df <- as.data.frame(confusionMatrix)
     colnames(confusion_df) <- c("Prediction", "Reference", "Freq")
     ggplot(confusion_df, aes(x = Reference, y = Prediction, fill = Freq)) +
@@ -316,15 +377,11 @@ server <- function(input, output, session) {
       theme(axis.text.x = element_text(angle = 45, hjust = 1))
   })
   
-  
   output$confusion_matrix_plot_RF <- renderPlot({
     req(trained_model_RF())
-    # Get the confusion matrix from the trained random forest model
     confusionMatrix_RF <- trained_model_RF()$metrics_RF$table
-    # Convert the confusion matrix to a tidy data frame
     confusion_df_RF <- as.data.frame(confusionMatrix_RF)
     colnames(confusion_df_RF) <- c("Prediction", "Reference", "Freq")
-    # Create a fancy visualization of the confusion matrix using ggplot2
     ggplot(confusion_df_RF, aes(x = Reference, y = Prediction, fill = Freq)) +
       geom_tile(color = "white") +
       geom_text(aes(label = sprintf("%d\n(%.1f%%)", Freq, Freq/sum(Freq)*100)), vjust = 1) +
@@ -375,7 +432,6 @@ server <- function(input, output, session) {
     if (!is.null(data())) {
       output$table <- renderDT({ datatable(data()) })
       output$summary <- renderPrint({ summary(data()) })
-      # Update the choices for column_to_convert selectInput
       updateSelectInput(session, "column_to_convert", choices = names(data()))
     }
   })
@@ -481,14 +537,12 @@ server <- function(input, output, session) {
       showModal(modalDialog("Veuillez sélectionner des variables à supprimer.", title = "Aucune sélection", easyClose = TRUE))
     }
   })
-  # Add this observer to your server function
   observeEvent(input$removeMissingRows, {
     req(data())
     dataInput <- data()
     dataInput <- na.omit(dataInput)
     data(dataInput)
     
-    # Update the select inputs to reflect the changes in the dataset
     updateSelectInput(session, "x_variable", choices = names(dataInput))
     updateSelectInput(session, "y_variable", choices = names(dataInput))
     updateSelectInput(session, "training_variable", choices = names(dataInput),selected = input$training_variable)
@@ -510,11 +564,8 @@ server <- function(input, output, session) {
   })
   output$correlation_matrix_plot <- renderPlot({
     req(data())
-    # Exclude the first and last columns from the data
     data_excluded <- data()[-c(1, ncol(data()))]
-    # Calculate the correlation matrix
     correlation_matrix <- cor(data_excluded, use = "pairwise.complete.obs")
-    # Visualize the correlation matrix using a heatmap
     corrplot(correlation_matrix, method = "color", type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
   })
   
@@ -551,6 +602,32 @@ server <- function(input, output, session) {
     showModal(modalDialog("Rows have been deleted successfully.", easyClose = TRUE))
   })
   
+  observeEvent(input$remove_duplicates, {
+    req(data())  # Ensure that 'data' is available before proceeding
+    
+    # Calculate the number of rows before deduplication
+    n_before <- nrow(data())
+    
+    # Remove duplicates
+    data_unique <- data() %>%
+      distinct(.keep_all = TRUE)
+    
+    # Calculate the number of rows after deduplication
+    n_after <- nrow(data_unique)
+    
+    # Calculate the number of duplicates removed
+    n_duplicates <- n_before - n_after
+    
+    # Provide feedback to the user about the number of duplicates removed
+    showNotification(paste("Le nombre de doublons supprimés est de :", n_duplicates), type = "message")
+    
+    # Update the 'data' reactive value with the deduplicated data
+    data(data_unique)
+    
+    # Provide feedback to the user
+    showNotification("Les doublons ont été supprimés.", type = "message")
+  })
+  
   output$pie_chart <- renderPlot({
     req(data())
     last_column <- names(data())[ncol(data())]
@@ -559,5 +636,6 @@ server <- function(input, output, session) {
       coord_polar(theta = "y") +
       labs(title = "Pie Chart for the label", fill = last_column)
   })
+
 }
 shinyApp(ui = ui, server = server)
