@@ -16,6 +16,7 @@ library(randomForest)
 library(shinyjs)
 library(shinyWidgets)
 library(shinydashboard)
+library(rsconnect)
 
 ui <- dashboardPage(
   dashboardHeader(title = "Exploration de données"),
@@ -211,17 +212,30 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$normalize, {
-    data_normalized <- as.data.frame(scale(data()))
+    # Min-max normalization
+    normalize <- function(x) {
+      return((x - min(x)) / (max(x) - min(x)))
+    }
+    
+    # Apply normalization to each column of the dataframe
+    data_normalized <- as.data.frame(lapply(data()[, -ncol(data())], normalize))
+    
+    # Attach the last column from the original data
+    data_normalized$Class <- data()[, ncol(data())]   
     data(data_normalized)
   })
   
   observeEvent(input$zscore_normalize, {
     req(data())  # Ensure that 'data' is available before proceeding
     
-    # Perform Z-score normalization
-    data_normalized <- as.data.frame(scale(data()))
+    # Perform Z-score normalization on all columns except the last one
+    data_normalized <- scale(data()[, -ncol(data())])
     
-    # Update the 'data' reactive value with the normalized data
+    # Convert it back to a dataframe
+    data_normalized <- as.data.frame(data_normalized)
+    
+    # Attach the last column from the original data
+    data_normalized$last_column <- data()[, ncol(data())]
     data(data_normalized)
     
     # You can also provide some feedback to the user, e.g., via a notification
